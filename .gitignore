@@ -1,0 +1,15 @@
+# Worktrees
+.worktrees/
+
+# Terraform
+**/.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfplan
+.terraform.lock.hcl
+
+# Ansible generated inventory
+ansible/hosts.ini
+
+# OS
+.DS_Store
