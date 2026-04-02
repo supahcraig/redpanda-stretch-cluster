@@ -33,9 +33,9 @@ variable "ssh_key_name" {
   description = "AWS key pair name to register and attach to instances"
 }
 
-variable "public_key_path" {
+variable "public_key_material" {
   type        = string
-  description = "Local path to the SSH public key file"
+  description = "SSH public key material (OpenSSH format) to register as an AWS key pair"
 }
 
 variable "broker_instance_type" {

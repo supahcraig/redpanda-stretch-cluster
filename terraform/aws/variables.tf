@@ -40,17 +40,6 @@ variable "ssh_key_name" {
   description = "Key pair name registered in all 3 regions with the same public key material"
 }
 
-variable "public_key_path" {
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
-  description = "Local path to SSH public key"
-}
-
-variable "ssh_private_key_path" {
-  type        = string
-  default     = "~/.ssh/id_rsa"
-  description = "Local path to SSH private key — written into hosts.ini for Ansible"
-}
 
 variable "broker_instance_type" {
   type        = string

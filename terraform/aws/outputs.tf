@@ -26,3 +26,8 @@ output "leader_rack_order" {
   description = "Ordered AZ list used for default_leaders_preference"
   value = local.leader_rack_order
 }
+
+output "ssh_private_key_path" {
+  description = "Path where Terraform wrote the generated private key"
+  value       = local.ssh_private_key_path
+}

@@ -9,7 +9,29 @@ terraform {
       source  = "hashicorp/local"
       version = "~> 2.1"
     }
+    tls = {
+      source  = "hashicorp/tls"
+      version = "~> 4.0"
+    }
   }
+}
+
+# ── SSH Key Generation ────────────────────────────────────────────────────────
+# Generates a 4096-bit RSA key pair. Private key is written to ~/.ssh/<ssh_key_name>.
+# Public key material is registered in every AWS region under the same key name.
+resource "tls_private_key" "redpanda" {
+  algorithm = "RSA"
+  rsa_bits  = 4096
+}
+
+resource "local_sensitive_file" "private_key" {
+  content         = tls_private_key.redpanda.private_key_pem
+  filename        = pathexpand("~/.ssh/${var.ssh_key_name}")
+  file_permission = "0600"
+}
+
+locals {
+  ssh_private_key_path = pathexpand("~/.ssh/${var.ssh_key_name}")
 }
 
 # ── Providers (fixed aliases, variable-driven regions) ────────────────────────
@@ -52,7 +74,7 @@ module "region0" {
   peer_cidrs           = [var.regions[1].vpc_cidr, var.regions[2].vpc_cidr]
   deployment_prefix    = var.deployment_prefix
   ssh_key_name         = var.ssh_key_name
-  public_key_path      = var.public_key_path
+  public_key_material  = tls_private_key.redpanda.public_key_openssh
   broker_instance_type = var.broker_instance_type
   machine_architecture = var.machine_architecture
   disk_type            = var.disk_type
@@ -72,7 +94,7 @@ module "region1" {
   peer_cidrs           = [var.regions[0].vpc_cidr, var.regions[2].vpc_cidr]
   deployment_prefix    = var.deployment_prefix
   ssh_key_name         = var.ssh_key_name
-  public_key_path      = var.public_key_path
+  public_key_material  = tls_private_key.redpanda.public_key_openssh
   broker_instance_type = var.broker_instance_type
   machine_architecture = var.machine_architecture
   disk_type            = var.disk_type
@@ -92,7 +114,7 @@ module "region2" {
   peer_cidrs           = [var.regions[0].vpc_cidr, var.regions[1].vpc_cidr]
   deployment_prefix    = var.deployment_prefix
   ssh_key_name         = var.ssh_key_name
-  public_key_path      = var.public_key_path
+  public_key_material  = tls_private_key.redpanda.public_key_openssh
   broker_instance_type = var.broker_instance_type
   machine_architecture = var.machine_architecture
   disk_type            = var.disk_type
@@ -211,7 +233,7 @@ resource "local_file" "hosts_ini" {
   content = templatefile("${path.module}/hosts.ini.tpl", {
     brokers              = local.all_brokers
     data_device          = var.data_device
-    ssh_private_key_path = var.ssh_private_key_path
+    ssh_private_key_path = local.ssh_private_key_path
     redpanda_version     = var.redpanda_version
     leader_rack_order    = local.leader_rack_order
   })

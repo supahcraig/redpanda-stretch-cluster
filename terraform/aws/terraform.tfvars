@@ -3,8 +3,6 @@
 
 deployment_prefix    = "rp-stretch"
 ssh_key_name         = "redpanda-stretch-cluster"
-public_key_path      = "~/.ssh/id_rsa.pub"
-ssh_private_key_path = "~/.ssh/id_rsa"
 broker_instance_type = "m7gd.2xlarge"
 machine_architecture = "arm64"
 disk_type            = "instance_store"

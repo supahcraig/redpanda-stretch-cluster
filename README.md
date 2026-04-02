@@ -8,7 +8,7 @@ Terraform + Ansible automation for deploying a 5-broker [Redpanda](https://redpa
 
 ## Architecture
 
-- **Terraform** (`terraform/aws/`) provisions VPCs, security groups, EC2 instances, and full-mesh VPC peering across all 3 regions, then generates `ansible/hosts.ini`.
+- **Terraform** (`terraform/aws/`) generates an SSH key pair, provisions VPCs, security groups, EC2 instances, and full-mesh VPC peering across all 3 regions, then writes `ansible/hosts.ini`.
 - **Ansible** (`ansible/provision-cluster.yml`) bootstraps Redpanda on the generated inventory using the `redpanda.cluster` collection.
 - Brokers advertise their **public IPs** so external clients and producers can connect directly.
 - Inter-broker RPC flows over **private IPs** via VPC peering.
@@ -30,24 +30,9 @@ Terraform + Ansible automation for deploying a 5-broker [Redpanda](https://redpa
 
 Your AWS credentials must have permission to create/destroy: VPCs, subnets, internet gateways, route tables, security groups, EC2 instances, EBS volumes, key pairs, and VPC peering connections — in all 3 target regions.
 
-### SSH key pair
-
-Generate a dedicated key pair for this project (recommended):
-
-```bash
-ssh-keygen -t rsa -b 4096 -f ~/.ssh/redpanda-stretch-cluster -N ""
-```
-
-Then update `terraform/aws/terraform.tfvars`:
-
-```hcl
-public_key_path      = "~/.ssh/redpanda-stretch-cluster.pub"
-ssh_private_key_path = "~/.ssh/redpanda-stretch-cluster"
-```
-
-The same public key material is registered in all 3 regions under the name set by `ssh_key_name` (default: `redpanda-stretch-cluster`).
-
 ### Ansible Galaxy dependencies
+
+From the repo root:
 
 ```bash
 ansible-galaxy install -r requirements.yml
@@ -59,7 +44,7 @@ ansible-galaxy install -r requirements.yml
 
 ### 1. Configure
 
-Edit `terraform/aws/terraform.tfvars` to set your SSH key paths, instance type, and any region/broker count overrides. The committed defaults deploy the standard 5-broker layout.
+Edit `terraform/aws/terraform.tfvars` to review defaults. The committed values deploy the standard 5-broker layout; change `ssh_key_name`, instance type, or regions as needed.
 
 ### 2. Provision infrastructure
 
@@ -69,22 +54,25 @@ terraform init
 terraform apply
 ```
 
-Terraform creates all cloud resources and writes `ansible/hosts.ini` at the repo root.
+Terraform generates a 4096-bit RSA key pair, writes the private key to `~/.ssh/<ssh_key_name>` (mode 0600), registers the public key in every AWS region, creates all cloud resources, and writes `ansible/hosts.ini` at the repo root.
 
 ### 3. Bootstrap Redpanda
 
+From the repo root:
+
 ```bash
-cd ../../   # repo root
-ansible-playbook ansible/provision-cluster.yml \
-  --private-key ~/.ssh/redpanda-stretch-cluster
+ansible-playbook ansible/provision-cluster.yml
 ```
+
+The SSH key path is embedded in `ansible/hosts.ini` by Terraform, so no `--private-key` flag is needed.
 
 ### 4. Verify
 
-After provisioning, Terraform outputs a ready-made bootstrap string:
+After provisioning, get the Kafka bootstrap string:
 
 ```bash
-terraform -chdir=terraform/aws output bootstrap_brokers
+cd terraform/aws
+terraform output bootstrap_brokers
 ```
 
 Use that to connect with `rpk` or any Kafka client.
@@ -101,12 +89,10 @@ All variables are defined in `terraform/aws/variables.tf` with defaults. Overrid
 |----------|---------|-------------|
 | `regions` | us-east-1 (2), us-east-2 (2), us-west-2 (1) | Ordered list of region configs. Each entry sets `name`, `broker_count`, `azs`, and `vpc_cidr`. Exactly 3 regions required. |
 | `leader_preference` | `["us-east-1", "us-east-2", "us-west-2"]` | Regions ordered most → least preferred for partition leadership. Must match region names in `regions`. |
+| `ssh_key_name` | `redpanda-stretch-cluster` | Name for the generated key pair (registered in all regions). Private key is written to `~/.ssh/<ssh_key_name>`. |
 | `broker_instance_type` | `m7gd.2xlarge` | Graviton3 + local NVMe. |
 | `machine_architecture` | `arm64` | Must match instance type (`arm64` for Graviton, `x86_64` for Intel/AMD). |
 | `disk_type` | `instance_store` | `instance_store` or `ebs`. |
-| `ssh_key_name` | `redpanda-stretch-cluster` | Key pair name registered in all regions. |
-| `public_key_path` | `~/.ssh/id_rsa.pub` | Local path to SSH public key. |
-| `ssh_private_key_path` | `~/.ssh/id_rsa` | Written into `hosts.ini` for Ansible. |
 | `redpanda_version` | `latest` | Redpanda version to install. |
 | `deployment_prefix` | `rp-stretch` | Prefix applied to all AWS resource Name tags. |
 
@@ -169,7 +155,7 @@ cd terraform/aws
 terraform destroy
 ```
 
-This destroys all AWS resources. The generated `ansible/hosts.ini` is gitignored and can be safely deleted.
+This destroys all AWS resources. The generated `ansible/hosts.ini` is gitignored and can be safely deleted. The generated private key at `~/.ssh/<ssh_key_name>` is not deleted automatically — remove it manually if desired.
 
 ---
 
@@ -188,7 +174,7 @@ stretch_cluster/
     provision-cluster.yml        # Main playbook
   terraform/
     aws/
-      main.tf                    # Providers, module calls, VPC peering, hosts.ini
+      main.tf                    # Providers, key generation, module calls, VPC peering, hosts.ini
       variables.tf
       outputs.tf
       terraform.tfvars           # Active configuration (edit before applying)

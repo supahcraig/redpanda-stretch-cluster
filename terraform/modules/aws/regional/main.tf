@@ -131,7 +131,7 @@ resource "aws_security_group" "redpanda" {
 # Same name and key material registered in every region so one ~/.ssh entry works.
 resource "aws_key_pair" "redpanda" {
   key_name   = var.ssh_key_name
-  public_key = file(var.public_key_path)
+  public_key = var.public_key_material
 }
 
 # ── EC2 Broker Instances ──────────────────────────────────────────────────────
