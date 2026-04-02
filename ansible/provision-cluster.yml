@@ -1,0 +1,90 @@
+---
+# Provisions a stretch Redpanda cluster across multiple regions.
+# Run after `terraform apply` has generated ansible/hosts.ini.
+#
+# Usage:
+#   ansible-playbook ansible/provision-cluster.yml --private-key ~/.ssh/id_rsa
+#
+- name: Provision stretch Redpanda cluster
+  hosts: redpanda
+  become: true
+  vars:
+    advertise_public_ips: true
+
+  tasks:
+    # ── System prereqs & sysctl ───────────────────────────────────────────────
+    - name: Install system prerequisites
+      ansible.builtin.include_role:
+        name: redpanda.cluster.system_setup
+
+    - name: Apply sysctl settings
+      ansible.builtin.include_role:
+        name: redpanda.cluster.sysctl_setup
+
+    # ── Disk setup ────────────────────────────────────────────────────────────
+    # Format the data volume as XFS and mount at /var/lib/redpanda/data.
+    # data_device is set per-host in hosts.ini (default: /dev/nvme1n1).
+    # For dual-NVMe instances (i3en), create a RAID-0 array first and set
+    # data_device to the md device path before running this playbook.
+    - name: Create Redpanda data directory
+      ansible.builtin.file:
+        path: /var/lib/redpanda/data
+        state: directory
+        mode: "0755"
+        owner: redpanda
+        group: redpanda
+      ignore_errors: true   # user may not exist yet; broker role creates it
+
+    - name: Format data volume as XFS
+      community.general.filesystem:
+        fstype: xfs
+        dev: "{{ data_device | default('/dev/nvme1n1') }}"
+        force: false   # never reformat if already formatted
+
+    - name: Mount data volume
+      ansible.posix.mount:
+        path: /var/lib/redpanda/data
+        src: "{{ data_device | default('/dev/nvme1n1') }}"
+        fstype: xfs
+        opts: defaults,noatime
+        state: mounted
+
+    - name: Ensure Redpanda data directory ownership
+      ansible.builtin.file:
+        path: /var/lib/redpanda/data
+        state: directory
+        mode: "0755"
+        owner: redpanda
+        group: redpanda
+
+    # ── Build seed list from inventory ───────────────────────────────────────
+    # All brokers' private IPs as seeds. Private IPs are reachable cross-region
+    # via VPC peering. Using set_fact avoids complex Jinja2 filter chains.
+    - name: Collect broker private IPs for seeds
+      ansible.builtin.set_fact:
+        _broker_seeds: >-
+          {{
+            groups['redpanda']
+            | map('extract', hostvars, 'private_ip')
+            | list
+          }}
+
+    # ── Redpanda broker install ───────────────────────────────────────────────
+    - name: Install and start Redpanda
+      ansible.builtin.include_role:
+        name: redpanda.cluster.redpanda_broker
+      vars:
+        redpanda_version: "{{ redpanda_version | default('latest') }}"
+        seeds: "{{ _broker_seeds }}"
+        # Per-broker rack = AZ name, set via hosts.ini host variable
+        redpanda_rack: "{{ rack }}"
+        # Cluster-wide settings applied on first broker bootstrap
+        redpanda_cluster_properties:
+          enable_rack_awareness: true
+          default_topic_replications: 5
+          internal_topic_replication_factor: 5
+          default_leaders_preference:
+            # Ordered AZ list derived from leader_preference in Terraform.
+            # Passed through hosts.ini as comma-separated string.
+            racks: "{{ redpanda_leader_rack_preference.split(',') }}"
+      when: not skip_node | default(false) | bool
