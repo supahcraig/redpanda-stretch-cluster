@@ -102,3 +102,96 @@ module "region2" {
   data_device          = var.data_device
   providers            = { aws = aws.region2 }
 }
+
+# ── VPC Peering: region0 ↔ region1 ───────────────────────────────────────────
+resource "aws_vpc_peering_connection" "r0_r1" {
+  provider    = aws.region0
+  vpc_id      = module.region0.vpc_id
+  peer_vpc_id = module.region1.vpc_id
+  peer_region = var.regions[1].name
+  auto_accept = false
+  tags        = { Name = "${var.deployment_prefix}-r0-r1" }
+}
+
+resource "aws_vpc_peering_connection_accepter" "r0_r1" {
+  provider                  = aws.region1
+  vpc_peering_connection_id = aws_vpc_peering_connection.r0_r1.id
+  auto_accept               = true
+  tags                      = { Name = "${var.deployment_prefix}-r0-r1" }
+}
+
+resource "aws_route" "r0_to_r1" {
+  provider                  = aws.region0
+  route_table_id            = module.region0.route_table_id
+  destination_cidr_block    = var.regions[1].vpc_cidr
+  vpc_peering_connection_id = aws_vpc_peering_connection.r0_r1.id
+}
+
+resource "aws_route" "r1_to_r0" {
+  provider                  = aws.region1
+  route_table_id            = module.region1.route_table_id
+  destination_cidr_block    = var.regions[0].vpc_cidr
+  vpc_peering_connection_id = aws_vpc_peering_connection.r0_r1.id
+}
+
+# ── VPC Peering: region0 ↔ region2 ───────────────────────────────────────────
+resource "aws_vpc_peering_connection" "r0_r2" {
+  provider    = aws.region0
+  vpc_id      = module.region0.vpc_id
+  peer_vpc_id = module.region2.vpc_id
+  peer_region = var.regions[2].name
+  auto_accept = false
+  tags        = { Name = "${var.deployment_prefix}-r0-r2" }
+}
+
+resource "aws_vpc_peering_connection_accepter" "r0_r2" {
+  provider                  = aws.region2
+  vpc_peering_connection_id = aws_vpc_peering_connection.r0_r2.id
+  auto_accept               = true
+  tags                      = { Name = "${var.deployment_prefix}-r0-r2" }
+}
+
+resource "aws_route" "r0_to_r2" {
+  provider                  = aws.region0
+  route_table_id            = module.region0.route_table_id
+  destination_cidr_block    = var.regions[2].vpc_cidr
+  vpc_peering_connection_id = aws_vpc_peering_connection.r0_r2.id
+}
+
+resource "aws_route" "r2_to_r0" {
+  provider                  = aws.region2
+  route_table_id            = module.region2.route_table_id
+  destination_cidr_block    = var.regions[0].vpc_cidr
+  vpc_peering_connection_id = aws_vpc_peering_connection.r0_r2.id
+}
+
+# ── VPC Peering: region1 ↔ region2 ───────────────────────────────────────────
+resource "aws_vpc_peering_connection" "r1_r2" {
+  provider    = aws.region1
+  vpc_id      = module.region1.vpc_id
+  peer_vpc_id = module.region2.vpc_id
+  peer_region = var.regions[2].name
+  auto_accept = false
+  tags        = { Name = "${var.deployment_prefix}-r1-r2" }
+}
+
+resource "aws_vpc_peering_connection_accepter" "r1_r2" {
+  provider                  = aws.region2
+  vpc_peering_connection_id = aws_vpc_peering_connection.r1_r2.id
+  auto_accept               = true
+  tags                      = { Name = "${var.deployment_prefix}-r1-r2" }
+}
+
+resource "aws_route" "r1_to_r2" {
+  provider                  = aws.region1
+  route_table_id            = module.region1.route_table_id
+  destination_cidr_block    = var.regions[2].vpc_cidr
+  vpc_peering_connection_id = aws_vpc_peering_connection.r1_r2.id
+}
+
+resource "aws_route" "r2_to_r1" {
+  provider                  = aws.region2
+  route_table_id            = module.region2.route_table_id
+  destination_cidr_block    = var.regions[1].vpc_cidr
+  vpc_peering_connection_id = aws_vpc_peering_connection.r1_r2.id
+}
