@@ -63,18 +63,21 @@ variable "disk_type" {
 }
 
 variable "ebs_volume_size_gb" {
-  type    = number
-  default = 500
+  type        = number
+  description = "Size in GiB of the EBS data volume; only used when disk_type=ebs"
+  default     = 500
 }
 
 variable "ebs_volume_type" {
-  type    = string
-  default = "gp3"
+  type        = string
+  description = "EBS volume type for the data volume; gp3 is recommended for cost/performance"
+  default     = "gp3"
 }
 
 variable "ebs_iops" {
-  type    = number
-  default = 16000
+  type        = number
+  description = "Provisioned IOPS for the EBS data volume; only applies to gp3/io1/io2 types"
+  default     = 16000
 }
 
 variable "data_device" {
