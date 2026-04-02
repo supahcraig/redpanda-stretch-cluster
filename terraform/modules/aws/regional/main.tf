@@ -55,3 +55,81 @@ resource "aws_route_table_association" "public" {
   subnet_id      = aws_subnet.public[count.index].id
   route_table_id = aws_route_table.public.id
 }
+
+# ── Security Group ────────────────────────────────────────────────────────────
+resource "aws_security_group" "redpanda" {
+  name        = "${var.deployment_prefix}-${var.region_name}-rp"
+  description = "Redpanda stretch cluster broker"
+  vpc_id      = aws_vpc.this.id
+
+  # SSH — Ansible access
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Kafka — client access
+  ingress {
+    description = "Kafka"
+    from_port   = 9092
+    to_port     = 9092
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Admin API
+  ingress {
+    description = "Admin API"
+    from_port   = 9644
+    to_port     = 9644
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTP Proxy (Pandaproxy)
+  ingress {
+    description = "HTTP Proxy"
+    from_port   = 8082
+    to_port     = 8082
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # Internal RPC — inter-broker only, restricted to all VPC CIDRs
+  ingress {
+    description = "Internal RPC"
+    from_port   = 33145
+    to_port     = 33145
+    protocol    = "tcp"
+    cidr_blocks = concat([var.vpc_cidr], var.peer_cidrs)
+  }
+
+  # All traffic within own VPC
+  ingress {
+    description = "Intra-VPC"
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = [var.vpc_cidr]
+  }
+
+  # Allow all outbound
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.deployment_prefix}-${var.region_name}-rp" }
+}
+
+# ── SSH Key Pair ──────────────────────────────────────────────────────────────
+# Same name and key material registered in every region so one ~/.ssh entry works.
+resource "aws_key_pair" "redpanda" {
+  key_name   = var.ssh_key_name
+  public_key = file(var.public_key_path)
+}
