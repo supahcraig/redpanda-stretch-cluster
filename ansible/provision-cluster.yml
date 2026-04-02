@@ -9,7 +9,12 @@
   hosts: redpanda
   become: true
   vars:
-    advertise_public_ips: true
+    # advertise_public_ips: false means brokers advertise their private_ip from hosts.ini.
+    # Inter-broker RPC uses private IPs over VPC peering (correct).
+    # External clients should connect using public IPs from hosts.ini (ansible_host).
+    # Setting to true would advertise inventory_hostname (e.g. "broker-0-us-east-1"),
+    # which clients cannot resolve.
+    advertise_public_ips: false
 
   tasks:
     # ── System prereqs & sysctl ───────────────────────────────────────────────
@@ -58,8 +63,7 @@
         group: redpanda
 
     # ── Build seed list from inventory ───────────────────────────────────────
-    # All brokers' private IPs as seeds. Private IPs are reachable cross-region
-    # via VPC peering. Using set_fact avoids complex Jinja2 filter chains.
+    # Private IPs are reachable cross-region via VPC peering.
     - name: Collect broker private IPs for seeds
       ansible.builtin.set_fact:
         _broker_seeds: >-
@@ -75,16 +79,18 @@
         name: redpanda.cluster.redpanda_broker
       vars:
         redpanda_version: "{{ redpanda_version | default('latest') }}"
-        seeds: "{{ _broker_seeds }}"
-        # Per-broker rack = AZ name, set via hosts.ini host variable
-        redpanda_rack: "{{ rack }}"
-        # Cluster-wide settings applied on first broker bootstrap
-        redpanda_cluster_properties:
-          enable_rack_awareness: true
-          default_topic_replications: 5
-          internal_topic_replication_factor: 5
-          default_leaders_preference:
-            # Ordered AZ list derived from leader_preference in Terraform.
-            # Passed through hosts.ini as comma-separated string.
-            racks: "{{ redpanda_leader_rack_preference.split(',') }}"
+        # Per-broker rack = AZ name (set per-host in hosts.ini)
+        rack: "{{ rack }}"
+        # Cluster-wide settings via the role's JSON merge mechanism
+        redpanda: >-
+          {
+            "cluster": {
+              "default_topic_replications": 5,
+              "internal_topic_replication_factor": 5,
+              "schema_registry_replication_factor": 5,
+              "default_leaders_preference": {
+                "racks": {{ redpanda_leader_rack_preference.split(',') | to_json }}
+              }
+            }
+          }
       when: not skip_node | default(false) | bool

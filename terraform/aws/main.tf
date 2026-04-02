@@ -125,6 +125,7 @@ resource "aws_route" "r0_to_r1" {
   route_table_id            = module.region0.route_table_id
   destination_cidr_block    = var.regions[1].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r0_r1.id
+  depends_on                = [aws_vpc_peering_connection_accepter.r0_r1]
 }
 
 resource "aws_route" "r1_to_r0" {
@@ -132,6 +133,7 @@ resource "aws_route" "r1_to_r0" {
   route_table_id            = module.region1.route_table_id
   destination_cidr_block    = var.regions[0].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r0_r1.id
+  depends_on                = [aws_vpc_peering_connection_accepter.r0_r1]
 }
 
 # ── VPC Peering: region0 ↔ region2 ───────────────────────────────────────────
@@ -156,6 +158,7 @@ resource "aws_route" "r0_to_r2" {
   route_table_id            = module.region0.route_table_id
   destination_cidr_block    = var.regions[2].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r0_r2.id
+  depends_on                = [aws_vpc_peering_connection_accepter.r0_r2]
 }
 
 resource "aws_route" "r2_to_r0" {
@@ -163,6 +166,7 @@ resource "aws_route" "r2_to_r0" {
   route_table_id            = module.region2.route_table_id
   destination_cidr_block    = var.regions[0].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r0_r2.id
+  depends_on                = [aws_vpc_peering_connection_accepter.r0_r2]
 }
 
 # ── VPC Peering: region1 ↔ region2 ───────────────────────────────────────────
@@ -187,6 +191,7 @@ resource "aws_route" "r1_to_r2" {
   route_table_id            = module.region1.route_table_id
   destination_cidr_block    = var.regions[2].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r1_r2.id
+  depends_on                = [aws_vpc_peering_connection_accepter.r1_r2]
 }
 
 resource "aws_route" "r2_to_r1" {
@@ -194,6 +199,7 @@ resource "aws_route" "r2_to_r1" {
   route_table_id            = module.region2.route_table_id
   destination_cidr_block    = var.regions[1].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r1_r2.id
+  depends_on                = [aws_vpc_peering_connection_accepter.r1_r2]
 }
 
 # ── hosts.ini Generation ──────────────────────────────────────────────────────

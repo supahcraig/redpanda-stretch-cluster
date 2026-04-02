@@ -173,7 +173,7 @@ resource "aws_ebs_volume" "broker_data" {
   type              = var.ebs_volume_type
   size              = var.ebs_volume_size_gb
   # gp3 and io2 accept explicit IOPS; gp2 does not
-  iops = contains(["gp3", "io2"], var.ebs_volume_type) ? var.ebs_iops : null
+  iops = contains(["gp3", "io1", "io2"], var.ebs_volume_type) ? var.ebs_iops : null
   tags = {
     Name = "${var.deployment_prefix}-broker-${count.index}-${var.region_name}-data"
   }
