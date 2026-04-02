@@ -195,3 +195,20 @@ resource "aws_route" "r2_to_r1" {
   destination_cidr_block    = var.regions[1].vpc_cidr
   vpc_peering_connection_id = aws_vpc_peering_connection.r1_r2.id
 }
+
+# ── hosts.ini Generation ──────────────────────────────────────────────────────
+locals {
+  all_brokers = concat(module.region0.brokers, module.region1.brokers, module.region2.brokers)
+}
+
+resource "local_file" "hosts_ini" {
+  content = templatefile("${path.module}/hosts.ini.tpl", {
+    brokers              = local.all_brokers
+    data_device          = var.data_device
+    ssh_private_key_path = var.ssh_private_key_path
+    redpanda_version     = var.redpanda_version
+    leader_rack_order    = local.leader_rack_order
+  })
+  filename        = "${path.module}/../../ansible/hosts.ini"
+  file_permission = "0644"
+}
