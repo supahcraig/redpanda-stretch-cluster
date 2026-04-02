@@ -133,3 +133,55 @@ resource "aws_key_pair" "redpanda" {
   key_name   = var.ssh_key_name
   public_key = file(var.public_key_path)
 }
+
+# ── EC2 Broker Instances ──────────────────────────────────────────────────────
+# Brokers are distributed round-robin across the AZ list.
+resource "aws_instance" "broker" {
+  count         = var.broker_count
+  ami           = data.aws_ami.ubuntu.id
+  instance_type = var.broker_instance_type
+  subnet_id     = aws_subnet.public[count.index % length(aws_subnet.public)].id
+  key_name      = aws_key_pair.redpanda.key_name
+
+  vpc_security_group_ids      = [aws_security_group.redpanda.id]
+  associate_public_ip_address = true
+
+  # Surface local NVMe instance store to the OS (no-op for EBS path)
+  dynamic "ephemeral_block_device" {
+    for_each = var.disk_type == "instance_store" ? [1] : []
+    content {
+      device_name  = "/dev/sdb"
+      virtual_name = "ephemeral0"
+    }
+  }
+
+  root_block_device {
+    volume_type           = "gp3"
+    volume_size           = 50
+    delete_on_termination = true
+  }
+
+  tags = {
+    Name = "${var.deployment_prefix}-broker-${count.index}-${var.region_name}"
+  }
+}
+
+# ── EBS Data Volumes (only when disk_type = "ebs") ────────────────────────────
+resource "aws_ebs_volume" "broker_data" {
+  count             = var.disk_type == "ebs" ? var.broker_count : 0
+  availability_zone = aws_instance.broker[count.index].availability_zone
+  type              = var.ebs_volume_type
+  size              = var.ebs_volume_size_gb
+  # gp3 and io2 accept explicit IOPS; gp2 does not
+  iops = contains(["gp3", "io2"], var.ebs_volume_type) ? var.ebs_iops : null
+  tags = {
+    Name = "${var.deployment_prefix}-broker-${count.index}-${var.region_name}-data"
+  }
+}
+
+resource "aws_volume_attachment" "broker_data" {
+  count       = var.disk_type == "ebs" ? var.broker_count : 0
+  device_name = "/dev/sdf"
+  volume_id   = aws_ebs_volume.broker_data[count.index].id
+  instance_id = aws_instance.broker[count.index].id
+}

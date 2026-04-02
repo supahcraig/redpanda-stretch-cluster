@@ -8,5 +8,11 @@ output "route_table_id" {
 
 output "brokers" {
   description = "Per-broker info used to build hosts.ini and peering routes"
-  value       = [] # updated in Task 5 when aws_instance.broker is declared
+  value = [for i, inst in aws_instance.broker : {
+    name       = "broker-${i}-${var.region_name}"
+    public_ip  = inst.public_ip
+    private_ip = inst.private_ip
+    az         = inst.availability_zone
+    region     = var.region_name
+  }]
 }
