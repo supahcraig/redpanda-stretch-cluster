@@ -8,14 +8,6 @@
 - name: Provision stretch Redpanda cluster
   hosts: redpanda
   become: true
-  vars:
-    # advertise_public_ips: false means brokers advertise their private_ip from hosts.ini.
-    # Inter-broker RPC uses private IPs over VPC peering (correct).
-    # External clients should connect using public IPs from hosts.ini (ansible_host).
-    # Setting to true would advertise inventory_hostname (e.g. "broker-0-us-east-1"),
-    # which clients cannot resolve.
-    advertise_public_ips: false
-
   tasks:
     # ── System prereqs & sysctl ───────────────────────────────────────────────
     - name: Install system prerequisites
@@ -81,9 +73,15 @@
         redpanda_version: "{{ redpanda_version | default('latest') }}"
         # Per-broker rack = AZ name (set per-host in hosts.ini)
         rack: "{{ rack }}"
-        # Cluster-wide settings via the role's JSON merge mechanism
+        # Cluster-wide settings via the role's JSON merge mechanism.
+        # ansible_host = public IP (set per-host in hosts.ini); advertised_kafka_api
+        # is set explicitly so external producers can reach brokers via public IPs.
+        # Inter-broker RPC still uses private IPs via seeds (cross-region VPC peering).
         redpanda: >-
           {
+            "node": {
+              "advertised_kafka_api": [{"address": "{{ ansible_host }}", "port": 9092}]
+            },
             "cluster": {
               "default_topic_replications": 5,
               "internal_topic_replication_factor": 5,
