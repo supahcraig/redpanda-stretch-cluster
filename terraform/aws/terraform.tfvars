@@ -32,3 +32,9 @@ regions = [
     vpc_cidr     = "10.2.0.0/16"
   },
 ]
+
+# EBS disk settings (used when disk_type = "ebs"; switch broker_instance_type to e.g. m7g.2xlarge)
+# ebs_volume_size_gb   = 500
+# ebs_volume_type      = "gp3"
+# ebs_iops             = 16000
+# data_device          = "/dev/nvme1n1"
