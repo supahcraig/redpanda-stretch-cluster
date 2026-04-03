@@ -18,31 +18,6 @@
       ansible.builtin.include_role:
         name: redpanda.cluster.sysctl_setup
 
-    # ── Disk setup ────────────────────────────────────────────────────────────
-    # Format the data volume as XFS and mount at /var/lib/redpanda/data.
-    # data_device is set per-host in hosts.ini (default: /dev/nvme1n1).
-    # For dual-NVMe instances (i3en), create a RAID-0 array first and set
-    # data_device to the md device path before running this playbook.
-    - name: Create Redpanda data directory
-      ansible.builtin.file:
-        path: /var/lib/redpanda/data
-        state: directory
-        mode: "0755"
-
-    - name: Format data volume as XFS
-      community.general.filesystem:
-        fstype: xfs
-        dev: "{{ data_device | default('/dev/nvme1n1') }}"
-        force: false   # never reformat if already formatted
-
-    - name: Mount data volume
-      ansible.posix.mount:
-        path: /var/lib/redpanda/data
-        src: "{{ data_device | default('/dev/nvme1n1') }}"
-        fstype: xfs
-        opts: defaults,noatime
-        state: mounted
-
     # ── Build seed list from inventory ───────────────────────────────────────
     # Private IPs are reachable cross-region via VPC peering.
     - name: Collect broker private IPs for seeds
