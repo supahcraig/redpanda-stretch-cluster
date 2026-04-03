@@ -34,9 +34,7 @@
       ansible.builtin.include_role:
         name: redpanda.cluster.redpanda_broker
       vars:
-        # redpanda_version comes from [all:vars] in hosts.ini
-        # Per-broker rack = AZ name (set per-host in hosts.ini)
-        rack: "{{ rack }}"
+        # redpanda_version and rack come from hosts.ini (per-host and [all:vars])
         # Cluster-wide settings via the role's JSON merge mechanism.
         # ansible_host = public IP (set per-host in hosts.ini); advertised_kafka_api
         # is set explicitly so external producers can reach brokers via public IPs.
