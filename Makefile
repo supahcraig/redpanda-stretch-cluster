@@ -30,10 +30,4 @@ output:
 profile:
 	@BROKERS=$$(terraform -chdir=$(TERRAFORM_DIR) output -raw bootstrap_brokers) && \
 	ADMIN=$$(terraform -chdir=$(TERRAFORM_DIR) output -raw admin_api_addresses) && \
-	(rpk profile create $(PROFILE_NAME) 2>/dev/null; true) && \
-	rpk profile use $(PROFILE_NAME) && \
-	rpk profile set kafka.brokers $$BROKERS && \
-	rpk profile set admin_api.addresses $$ADMIN && \
-	echo "Profile '$(PROFILE_NAME)' ready" && \
-	echo "  Kafka:  $$BROKERS" && \
-	echo "  Admin:  $$ADMIN"
+	python3 scripts/create-rpk-profile.py $(PROFILE_NAME) "$$BROKERS" "$$ADMIN"
