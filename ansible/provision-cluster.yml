@@ -60,8 +60,7 @@
             default_topic_replications: 5
             internal_topic_replication_factor: 5
             schema_registry_replication_factor: 5
-            default_leaders_preference:
-              racks: "{{ redpanda_leader_rack_preference.split(',') }}"
+            default_leaders_preference: "racks:{{ redpanda_leader_rack_preference }}"
         redpanda: "{{ _redpanda_config | to_json }}"
       when: not skip_node | default(false) | bool
 
