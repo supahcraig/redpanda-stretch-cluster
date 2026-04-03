@@ -248,7 +248,7 @@ data "aws_ami" "console_ubuntu" {
 resource "aws_security_group" "console" {
   provider    = aws.region0
   name        = "${var.deployment_prefix}-console"
-  description = "Redpanda Console — HTTP and SSH"
+  description = "Redpanda Console - HTTP and SSH"
   vpc_id      = module.region0.vpc_id
 
   ingress {
