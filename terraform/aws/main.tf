@@ -224,6 +224,72 @@ resource "aws_route" "r2_to_r1" {
   depends_on                = [aws_vpc_peering_connection_accepter.r1_r2]
 }
 
+# ── Redpanda Console ─────────────────────────────────────────────────────────
+# Single instance in the primary region (region0). Public HTTP on port 8080.
+data "aws_ami" "console_ubuntu" {
+  provider    = aws.region0
+  most_recent = true
+  owners      = ["099720109477"] # Canonical
+
+  filter {
+    name   = "name"
+    values = ["ubuntu/images/hvm-ssd*/ubuntu-*-22.04-arm64-server-*"]
+  }
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+  filter {
+    name   = "architecture"
+    values = ["arm64"]
+  }
+}
+
+resource "aws_security_group" "console" {
+  provider    = aws.region0
+  name        = "${var.deployment_prefix}-console"
+  description = "Redpanda Console — HTTP and SSH"
+  vpc_id      = module.region0.vpc_id
+
+  ingress {
+    description = "Console UI"
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    description = "SSH"
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = { Name = "${var.deployment_prefix}-console" }
+}
+
+resource "aws_instance" "console" {
+  provider               = aws.region0
+  ami                    = data.aws_ami.console_ubuntu.id
+  instance_type          = var.console_instance_type
+  subnet_id              = module.region0.first_subnet_id
+  key_name               = var.ssh_key_name
+  vpc_security_group_ids = [aws_security_group.console.id]
+
+  associate_public_ip_address = true
+
+  tags = { Name = "${var.deployment_prefix}-console" }
+}
+
 # ── hosts.ini Generation ──────────────────────────────────────────────────────
 locals {
   all_brokers = concat(module.region0.brokers, module.region1.brokers, module.region2.brokers)
@@ -236,6 +302,7 @@ resource "local_file" "hosts_ini" {
     ssh_private_key_path = local.ssh_private_key_path
     redpanda_version     = var.redpanda_version
     leader_rack_order    = local.leader_rack_order
+    console_public_ip    = aws_instance.console.public_ip
   })
   filename        = "${path.module}/../../ansible/hosts.ini"
   file_permission = "0644"

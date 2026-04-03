@@ -8,10 +8,11 @@ Terraform + Ansible automation for deploying a 5-broker [Redpanda](https://redpa
 
 ## Architecture
 
-- **Terraform** (`terraform/aws/`) generates an SSH key pair, provisions VPCs, security groups, EC2 instances, and full-mesh VPC peering across all 3 regions, then writes `ansible/hosts.ini`.
-- **Ansible** (`ansible/provision-cluster.yml`) bootstraps Redpanda on the generated inventory using the `redpanda.cluster` collection.
+- **Terraform** (`terraform/aws/`) generates an SSH key pair, provisions VPCs, security groups, EC2 instances, full-mesh VPC peering across all 3 regions, and a Redpanda Console host in the primary region, then writes `ansible/hosts.ini`.
+- **Ansible** (`ansible/provision-cluster.yml`) bootstraps Redpanda on the broker inventory and installs Redpanda Console using the `redpanda.cluster` collection.
 - Brokers advertise their **public IPs** so external clients and producers can connect directly.
 - Inter-broker RPC flows over **private IPs** via VPC peering.
+- Console connects to brokers via private IPs and is publicly accessible on port 8080.
 - No TLS.
 
 ---
@@ -78,7 +79,7 @@ make deploy
 make output
 ```
 
-Use that to connect with `rpk` or any Kafka client.
+This prints the Kafka bootstrap string, the Console URL (`http://<ip>:8080`), and the SSH key path.
 
 ---
 
@@ -97,6 +98,7 @@ All variables are defined in `terraform/aws/variables.tf` with defaults. Overrid
 | `machine_architecture` | `arm64` | Must match instance type (`arm64` for Graviton, `x86_64` for Intel/AMD). |
 | `disk_type` | `instance_store` | `instance_store` or `ebs`. |
 | `redpanda_version` | `latest` | Redpanda version to install. |
+| `console_instance_type` | `t4g.small` | EC2 instance type for Redpanda Console (arm64, primary region only). |
 | `deployment_prefix` | `rp-stretch` | Prefix applied to all AWS resource Name tags. |
 
 ### EBS disk mode

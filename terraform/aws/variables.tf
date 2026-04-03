@@ -86,6 +86,12 @@ variable "leader_preference" {
   description = "Regions ordered from most to least preferred for partition leadership. Must match names in var.regions."
 }
 
+variable "console_instance_type" {
+  type        = string
+  default     = "t4g.small"
+  description = "EC2 instance type for the Redpanda Console host (arm64/Graviton)"
+}
+
 variable "redpanda_version" {
   type    = string
   default = "latest"

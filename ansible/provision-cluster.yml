@@ -62,3 +62,18 @@
         mode: "0755"
         owner: redpanda
         group: redpanda
+
+# ── Redpanda Console ──────────────────────────────────────────────────────────
+- name: Install Redpanda Console
+  hosts: console
+  become: true
+  tasks:
+    - name: Install Redpanda Console
+      ansible.builtin.include_role:
+        name: redpanda.cluster.console
+      vars:
+        # console_kafka_brokers is set in [all:vars] in hosts.ini as
+        # comma-separated host:port pairs of all broker private IPs.
+        redpanda_console_config:
+          kafka:
+            brokers: "{{ console_kafka_brokers.split(',') }}"

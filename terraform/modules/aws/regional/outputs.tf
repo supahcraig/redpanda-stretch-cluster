@@ -2,6 +2,11 @@ output "vpc_id" {
   value = aws_vpc.this.id
 }
 
+output "first_subnet_id" {
+  description = "ID of the first public subnet (AZ index 0) — used for console placement"
+  value       = aws_subnet.public[0].id
+}
+
 output "route_table_id" {
   value = aws_route_table.public.id
 }

@@ -31,3 +31,8 @@ output "ssh_private_key_path" {
   description = "Path where Terraform wrote the generated private key"
   value       = local.ssh_private_key_path
 }
+
+output "console_url" {
+  description = "Redpanda Console URL"
+  value       = "http://${aws_instance.console.public_ip}:8080"
+}
