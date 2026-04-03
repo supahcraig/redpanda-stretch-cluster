@@ -11,5 +11,8 @@
 # Ansible generated inventory
 ansible/hosts.ini
 
+# Claude Code
+.claude/
+
 # OS
 .DS_Store
