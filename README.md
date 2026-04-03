@@ -25,6 +25,7 @@ Terraform + Ansible automation for deploying a 5-broker [Redpanda](https://redpa
 | Terraform | ≥ 1.3 |
 | Ansible | ≥ 2.13 |
 | AWS CLI | ≥ 2.x, configured with credentials |
+| make | any (pre-installed on macOS/Linux) |
 
 ### AWS permissions
 
@@ -170,6 +171,8 @@ For instances with multiple NVMe drives, create a RAID-0 array before running th
 
 ```
 stretch_cluster/
+  Makefile                       # Task runner — all commands run from repo root
+  ansible.cfg                    # Ansible config (inventory path, host key checking)
   requirements.yml               # Ansible Galaxy deps
   ansible/
     provision-cluster.yml        # Main playbook

@@ -28,9 +28,6 @@
         path: /var/lib/redpanda/data
         state: directory
         mode: "0755"
-        owner: redpanda
-        group: redpanda
-      ignore_errors: true   # user may not exist yet; broker role creates it
 
     - name: Format data volume as XFS
       community.general.filesystem:
@@ -45,14 +42,6 @@
         fstype: xfs
         opts: defaults,noatime
         state: mounted
-
-    - name: Ensure Redpanda data directory ownership
-      ansible.builtin.file:
-        path: /var/lib/redpanda/data
-        state: directory
-        mode: "0755"
-        owner: redpanda
-        group: redpanda
 
     # ── Build seed list from inventory ───────────────────────────────────────
     # Private IPs are reachable cross-region via VPC peering.
@@ -92,3 +81,11 @@
             }
           }
       when: not skip_node | default(false) | bool
+
+    - name: Ensure Redpanda data directory ownership
+      ansible.builtin.file:
+        path: /var/lib/redpanda/data
+        state: directory
+        mode: "0755"
+        owner: redpanda
+        group: redpanda
