@@ -18,6 +18,17 @@
       ansible.builtin.include_role:
         name: redpanda.cluster.sysctl_setup
 
+    # system_setup installs the redpanda package (creating the redpanda user)
+    # and mounts NVMe at /mnt/vectorized. Ensure the data directory is owned
+    # by the redpanda user before the broker role tries to write to it.
+    - name: Ensure redpanda owns the data directory
+      ansible.builtin.file:
+        path: /var/lib/redpanda/data
+        state: directory
+        mode: "0755"
+        owner: redpanda
+        group: redpanda
+
     # ── Build seed list from inventory ───────────────────────────────────────
     # Private IPs are reachable cross-region via VPC peering.
     - name: Collect broker private IPs for seeds
@@ -52,14 +63,6 @@
               racks: "{{ redpanda_leader_rack_preference.split(',') }}"
         redpanda: "{{ _redpanda_config | to_json }}"
       when: not skip_node | default(false) | bool
-
-    - name: Ensure Redpanda data directory ownership
-      ansible.builtin.file:
-        path: /var/lib/redpanda/data
-        state: directory
-        mode: "0755"
-        owner: redpanda
-        group: redpanda
 
 # ── Redpanda Console ──────────────────────────────────────────────────────────
 - name: Install Redpanda Console
