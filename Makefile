@@ -1,5 +1,7 @@
 TERRAFORM_DIR := terraform/aws
 PROFILE_NAME  := stretch-cluster
+# Find first executable rpk binary (skips dead Linux binaries that may appear first in PATH)
+RPK := $(shell for b in $$(which -a rpk 2>/dev/null); do "$$b" version >/dev/null 2>&1 && echo "$$b" && break; done)
 
 .PHONY: install-deps init apply plan provision deploy destroy output profile
 
@@ -30,4 +32,10 @@ output:
 profile:
 	@BROKERS=$$(terraform -chdir=$(TERRAFORM_DIR) output -raw bootstrap_brokers) && \
 	ADMIN=$$(terraform -chdir=$(TERRAFORM_DIR) output -raw admin_api_addresses) && \
-	python3 scripts/create-rpk-profile.py $(PROFILE_NAME) "$$BROKERS" "$$ADMIN"
+	($(RPK) profile delete $(PROFILE_NAME) 2>/dev/null; true) && \
+	$(RPK) profile create $(PROFILE_NAME) \
+	    --set kafka_api.brokers="$$BROKERS" \
+	    --set admin_api.addresses="$$ADMIN" && \
+	echo "Profile '$(PROFILE_NAME)' ready" && \
+	echo "  Kafka:  $$BROKERS" && \
+	echo "  Admin:  $$ADMIN"
