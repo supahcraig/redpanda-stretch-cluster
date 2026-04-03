@@ -28,6 +28,7 @@
         mode: "0755"
         owner: redpanda
         group: redpanda
+        recurse: true
 
     # ── Build seed list from inventory ───────────────────────────────────────
     # Private IPs are reachable cross-region via VPC peering.
