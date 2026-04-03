@@ -36,3 +36,8 @@ output "console_url" {
   description = "Redpanda Console URL"
   value       = "http://${aws_instance.console.public_ip}:8080"
 }
+
+output "admin_api_addresses" {
+  description = "Admin API addresses (port 9644) for all brokers"
+  value       = join(",", [for b in local.all_brokers : "${b.public_ip}:9644"])
+}

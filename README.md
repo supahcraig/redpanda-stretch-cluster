@@ -37,8 +37,10 @@ Your AWS credentials must have permission to create/destroy: VPCs, subnets, inte
 From the repo root:
 
 ```bash
-ansible-galaxy install -r requirements.yml
+make install-deps
 ```
+
+This installs Ansible Galaxy collections and applies a small patch to the `redpanda_broker` role that fixes a bug where `no_log: true` causes a false failure on cluster config tasks (the underlying `rpk` commands succeed but Ansible marks them failed due to an unsafe variable evaluation error).
 
 ---
 
