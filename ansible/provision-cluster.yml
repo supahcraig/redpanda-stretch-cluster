@@ -76,16 +76,22 @@
       register: result2
 
 # ── Redpanda Console ──────────────────────────────────────────────────────────
+# Console is installed via the redpanda_broker role with install_console: true.
+# The role installs the redpanda-console package (from the Redpanda apt repo),
+# writes /etc/redpanda/redpanda-console-config.yaml, and starts the service.
 - name: Install Redpanda Console
   hosts: console
   become: true
   tasks:
-    - name: Install Redpanda Console
+    - name: Install system prerequisites
       ansible.builtin.include_role:
-        name: redpanda.cluster.console
+        name: redpanda.cluster.system_setup
+
+    - name: Install and configure Redpanda Console
+      ansible.builtin.include_role:
+        name: redpanda.cluster.redpanda_broker
       vars:
-        # console_kafka_brokers is set in [all:vars] in hosts.ini as
-        # comma-separated host:port pairs of all broker private IPs.
-        redpanda_console_config:
-          kafka:
-            brokers: "{{ console_kafka_brokers.split(',') }}"
+        install_console: true
+        # console_kafka_brokers from [all:vars] in hosts.ini:
+        # comma-separated private_ip:9092 pairs for all brokers
+        rpconsole: "{{ {'kafka': {'brokers': console_kafka_brokers.split(',')}} | to_json }}"
