@@ -48,31 +48,33 @@ Edit `terraform/aws/terraform.tfvars` to review defaults. The committed values d
 
 ### 2. Provision infrastructure
 
-```bash
-cd terraform/aws
-terraform init
-terraform apply
-```
-
-Terraform generates a 4096-bit RSA key pair, writes the private key to `~/.ssh/<ssh_key_name>` (mode 0600), registers the public key in every AWS region, creates all cloud resources, and writes `ansible/hosts.ini` at the repo root.
-
-### 3. Bootstrap Redpanda
-
 From the repo root:
 
 ```bash
-ansible-playbook ansible/provision-cluster.yml
+make init
+make apply
+```
+
+Terraform generates a 4096-bit RSA key pair, writes the private key to `~/.ssh/<ssh_key_name>` (mode 0600), registers the public key in every AWS region, creates all cloud resources, and writes `ansible/hosts.ini`.
+
+### 3. Bootstrap Redpanda
+
+```bash
+make provision
 ```
 
 The SSH key path is embedded in `ansible/hosts.ini` by Terraform, so no `--private-key` flag is needed.
 
-### 4. Verify
-
-After provisioning, get the Kafka bootstrap string:
+To provision infrastructure and bootstrap Redpanda in one step:
 
 ```bash
-cd terraform/aws
-terraform output bootstrap_brokers
+make deploy
+```
+
+### 4. Verify
+
+```bash
+make output
 ```
 
 Use that to connect with `rpk` or any Kafka client.
@@ -151,8 +153,7 @@ RF=5 is set for all topics including internal topics and schema registry.
 ## Teardown
 
 ```bash
-cd terraform/aws
-terraform destroy
+make destroy
 ```
 
 This destroys all AWS resources. The generated `ansible/hosts.ini` is gitignored and can be safely deleted. The generated private key at `~/.ssh/<ssh_key_name>` is not deleted automatically — remove it manually if desired.
