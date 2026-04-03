@@ -35,24 +35,22 @@
         name: redpanda.cluster.redpanda_broker
       vars:
         # redpanda_version and rack come from hosts.ini (per-host and [all:vars])
-        # Cluster-wide settings via the role's JSON merge mechanism.
-        # ansible_host = public IP (set per-host in hosts.ini); advertised_kafka_api
-        # is set explicitly so external producers can reach brokers via public IPs.
-        # Inter-broker RPC still uses private IPs via seeds (cross-region VPC peering).
-        redpanda: >-
-          {
-            "node": {
-              "advertised_kafka_api": [{"address": "{{ ansible_host }}", "port": 9092}]
-            },
-            "cluster": {
-              "default_topic_replications": 5,
-              "internal_topic_replication_factor": 5,
-              "schema_registry_replication_factor": 5,
-              "default_leaders_preference": {
-                "racks": {{ redpanda_leader_rack_preference.split(',') | to_json }}
-              }
-            }
-          }
+        # Define config as a native YAML dict, then serialize to the JSON string
+        # the role expects (it calls `from_json` internally).
+        # ansible_host = public IP; advertised_kafka_api ensures external producers
+        # can reach brokers. Inter-broker RPC uses private IPs via VPC peering.
+        _redpanda_config:
+          node:
+            advertised_kafka_api:
+              - address: "{{ ansible_host }}"
+                port: 9092
+          cluster:
+            default_topic_replications: 5
+            internal_topic_replication_factor: 5
+            schema_registry_replication_factor: 5
+            default_leaders_preference:
+              racks: "{{ redpanda_leader_rack_preference.split(',') }}"
+        redpanda: "{{ _redpanda_config | to_json }}"
       when: not skip_node | default(false) | bool
 
     - name: Ensure Redpanda data directory ownership
