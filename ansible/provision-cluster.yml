@@ -47,20 +47,33 @@
         name: redpanda.cluster.redpanda_broker
       vars:
         # redpanda_version and rack come from hosts.ini (per-host and [all:vars])
-        # Define config as a native YAML dict, then serialize to the JSON string
-        # the role expects (it calls `from_json` internally).
-        # ansible_host = public IP; advertised_kafka_api ensures external producers
-        # can reach brokers. Inter-broker RPC uses private IPs via VPC peering.
+        # node.redpanda.advertised_kafka_api overrides the role's default (private IP)
+        # with the public IP so external producers can reach this broker.
+        # Cluster-wide settings are applied separately below via rpk to avoid the
+        # role's no_log black box.
         _redpanda_config:
           node:
-            advertised_kafka_api:
-              - address: "{{ ansible_host }}"
-                port: 9092
-          cluster:
-            default_topic_replications: 5
-            internal_topic_replication_factor: 5
+            redpanda:
+              advertised_kafka_api:
+                - address: "{{ ansible_host }}"
+                  port: 9092
         redpanda: "{{ _redpanda_config | to_json }}"
       when: not skip_node | default(false) | bool
+
+    # ── Cluster-wide config ───────────────────────────────────────────────────
+    # Set via rpk directly so failures are visible (role uses no_log).
+    # run_once applies the change through one broker; it propagates to all.
+    - name: Set default_topic_replications
+      ansible.builtin.command: rpk cluster config set default_topic_replications 5
+      run_once: true
+      changed_when: "'New configuration version' in result.stdout"
+      register: result
+
+    - name: Set internal_topic_replication_factor
+      ansible.builtin.command: rpk cluster config set internal_topic_replication_factor 5
+      run_once: true
+      changed_when: "'New configuration version' in result2.stdout"
+      register: result2
 
 # ── Redpanda Console ──────────────────────────────────────────────────────────
 - name: Install Redpanda Console
