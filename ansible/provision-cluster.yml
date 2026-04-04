@@ -75,6 +75,14 @@
       changed_when: "'New configuration version' in result2.stdout"
       register: result2
 
+    - name: Set default_leaders_preference
+      ansible.builtin.command: >
+        rpk cluster config set default_leaders_preference
+        ordered_racks:{{ redpanda_leader_rack_preference }}
+      run_once: true
+      changed_when: "'New configuration version' in result3.stdout"
+      register: result3
+
 # ── Redpanda Console ──────────────────────────────────────────────────────────
 # Console is installed via the redpanda_broker role with install_console: true.
 # The role installs the redpanda-console package (from the Redpanda apt repo),
